@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多媒体相册</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- Tailwind配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .gallery-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 1.5rem;
+            }
+            .media-card {
+                @apply bg-white rounded-xl overflow-hidden shadow-lg transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1;
+            }
+            .backdrop-blur {
+                backdrop-filter: blur(8px);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-dark min-h-screen">
+    <!-- 导航栏 -->
+    <header class="bg-white shadow-sm fixed w-full top-0 z-30 transition-all duration-300" id="navbar">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-primary flex items-center">
+                <i class="fa fa-camera-retro mr-2"></i>
+                <span>多媒体相册</span>
+            </h1>
+            <div class="flex items-center space-x-4">
+                <button id="refreshBtn" class="px-4 py-2 bg-primary text-white rounded-lg shadow transition-all duration-300 hover:bg-primary/90 hover:shadow-md flex items-center">
+                    <i class="fa fa-refresh mr-2"></i>
+                    <span>刷新</span>
+                </button>
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="搜索媒体..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 w-48 lg:w-64">
+                    <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容 -->
+    <main class="container mx-auto px-4 pt-24 pb-16">
+        <!-- 分类标签 -->
+        <div class="mb-8 flex flex-wrap gap-2 justify-center">
+            <button class="category-btn px-4 py-2 rounded-full bg-primary text-white shadow-sm transition-all duration-300" data-category="all">
+                全部
+            </button>
+            <button class="category-btn px-4 py-2 rounded-full bg-gray-200 text-gray-700 shadow-sm transition-all duration-300 hover:bg-gray-300" data-category="image">
+                <i class="fa fa-image mr-1"></i> 图片
+            </button>
+            <button class="category-btn px-4 py-2 rounded-full bg-gray-200 text-gray-700 shadow-sm transition-all duration-300 hover:bg-gray-300" data-category="video">
+                <i class="fa fa-film mr-1"></i> 视频
+            </button>
+        </div>
+        
+        <!-- 媒体统计 -->
+        <div class="mb-8 text-center text-gray-600">
+            <span id="mediaCount">正在加载媒体...</span>
+        </div>
+        
+        <!-- 加载指示器 -->
+        <div id="loadingIndicator" class="flex justify-center items-center py-16">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+        
+        <!-- 相册网格 -->
+        <div id="gallery" class="gallery-grid opacity-0 transition-opacity duration-500"></div>
+        
+        <!-- 空状态 -->
+        <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-center">
+            <div class="bg-gray-100 rounded-full p-6 mb-4">
+                <i class="fa fa-folder-open-o text-4xl text-gray-400"></i>
+            </div>
+            <h2 class="text-xl font-medium text-gray-700 mb-2">没有找到媒体文件</h2>
+            <p class="text-gray-500 max-w-md">请确保在根目录的pic文件夹中包含JPEG图片或MP4/MOV视频文件</p>
+            <button id="retryBtn" class="mt-6 px-4 py-2 bg-primary text-white rounded-lg shadow transition-all duration-300 hover:bg-primary/90 hover:shadow-md">
+                <i class="fa fa-refresh mr-2"></i>重试
+            </button>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h2 class="text-xl font-bold mb-2">多媒体相册</h2>
+                    <p class="text-gray-400 text-sm">浏览和欣赏你的图片与视频</p>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">
+                        <i class="fa fa-github text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">
+                        <i class="fa fa-twitter text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors duration-300">
+                        <i class="fa fa-instagram text-xl"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="mt-6 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
+                &copy; 2025 多媒体相册 | 设计与开发
+            </div>
+        </div>
+    </footer>
+
+    <!-- 全屏查看器 -->
+    <div id="fullscreenViewer" class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <button id="closeViewer" class="absolute top-6 right-6 text-white text-3xl hover:text-gray-300 transition-colors duration-300 z-10">
+            <i class="fa fa-times"></i>
+        </button>
+        
+        <div class="w-full max-w-6xl px-4 flex items-center justify-center relative">
+            <!-- 上一个/下一个按钮 -->
+            <button id="prevBtn" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-3xl hover:text-gray-300 transition-colors duration-300 z-10">
+                <i class="fa fa-chevron-left"></i>
+            </button>
+            <button id="nextBtn" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-3xl hover:text-gray-300 transition-colors duration-300 z-10">
+                <i class="fa fa-chevron-right"></i>
+            </button>
+            
+            <!-- 媒体内容 -->
+            <div id="viewerContent" class="w-full">
+                <div class="aspect-video bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center relative">
+                    <img id="fullscreenImage" class="max-h-[80vh] max-w-full object-contain opacity-0 transition-opacity duration-300" alt="全屏图片">
+                    <video id="fullscreenVideo" class="max-h-[80vh] max-w-full object-contain opacity-0 transition-opacity duration-300" controls></video>
+                    
+                    <!-- 加载指示器 -->
+                    <div id="viewerLoader" class="absolute inset-0 flex items-center justify-center bg-gray-900">
+                        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                    </div>
+                </div>
+                
+                <!-- 媒体信息 -->
+                <div class="mt-4 text-white">
+                    <h3 id="mediaTitle" class="text-xl font-medium"></h3>
+                    <p id="mediaDetails" class="text-gray-400 text-sm mt-1"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 当前选中的媒体索引
+        let currentMediaIndex = 0;
+        // 所有媒体文件列表
+        let allMediaFiles = [];
+        // 过滤后的媒体文件列表
+        let filteredMediaFiles = [];
+        
+        // DOM元素
+        const gallery = document.getElementById('gallery');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const emptyState = document.getElementById('emptyState');
+        const mediaCount = document.getElementById('mediaCount');
+        const fullscreenViewer = document.getElementById('fullscreenViewer');
+        const fullscreenImage = document.getElementById('fullscreenImage');
+        const fullscreenVideo = document.getElementById('fullscreenVideo');
+        const viewerLoader = document.getElementById('viewerLoader');
+        const viewerContent = document.getElementById('viewerContent');
+        const mediaTitle = document.getElementById('mediaTitle');
+        const mediaDetails = document.getElementById('mediaDetails');
+        const closeViewer = document.getElementById('closeViewer');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const searchInput = document.getElementById('searchInput');
+        const categoryBtns = document.querySelectorAll('.category-btn');
+        const navbar = document.getElementById('navbar');
+        
+        // 页面加载时获取媒体文件
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMediaFiles();
+            
+            // 滚动时改变导航栏样式
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 10) {
+                    navbar.classList.add('py-2', 'shadow');
+                    navbar.classList.remove('py-4');
+                } else {
+                    navbar.classList.add('py-4');
+                    navbar.classList.remove('py-2', 'shadow');
+                }
+            });
+            
+            // 键盘导航
+            document.addEventListener('keydown', (e) => {
+                if (!fullscreenViewer.classList.contains('pointer-events-none')) {
+                    if (e.key === 'Escape') closeFullscreen();
+                    if (e.key === 'ArrowLeft') showPreviousMedia();
+                    if (e.key === 'ArrowRight') showNextMedia();
+                }
+            });
+            
+            // 点击全屏查看器背景关闭
+            fullscreenViewer.addEventListener('click', (e) => {
+                if (e.target === fullscreenViewer) closeFullscreen();
+            });
+        });
+        
+        // 刷新按钮事件
+        refreshBtn.addEventListener('click', () => {
+            fetchMediaFiles();
+            // 添加按钮动画
+            refreshBtn.classList.add('animate-spin');
+            setTimeout(() => {
+                refreshBtn.classList.remove('animate-spin');
+            }, 1000);
+        });
+        
+        // 重试按钮事件
+        retryBtn.addEventListener('click', fetchMediaFiles);
+        
+        // 关闭全屏查看器
+        closeViewer.addEventListener('click', closeFullscreen);
+        
+        // 上一个/下一个按钮事件
+        prevBtn.addEventListener('click', showPreviousMedia);
+        nextBtn.addEventListener('click', showNextMedia);
+        
+        // 搜索功能
+        searchInput.addEventListener('input', filterMedia);
+        
+        // 分类筛选
+        categoryBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // 更新按钮样式
+                categoryBtns.forEach(b => {
+                    b.classList.remove('bg-primary', 'text-white');
+                    b.classList.add('bg-gray-200', 'text-gray-700');
+                });
+                btn.classList.remove('bg-gray-200', 'text-gray-700');
+                btn.classList.add('bg-primary', 'text-white');
+                
+                // 筛选媒体
+                filterMedia();
+            });
+        });
+        
+        // 从服务器获取媒体文件
+        function fetchMediaFiles() {
+            gallery.innerHTML = '';
+            gallery.classList.add('opacity-0');
+            loadingIndicator.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            
+            // 模拟API请求获取媒体文件列表
+            // 实际应用中，这里应该是一个AJAX请求到服务器端脚本
+            // 服务器端脚本会扫描pic文件夹并返回文件列表
+            setTimeout(() => {
+                // 模拟媒体文件列表
+                const mockMediaFiles = [
+                    { name: 'nature1.jpg', type: 'image', size: 1245, date: '2025-06-15' },
+                    { name: 'nature2.jpg', type: 'image', size: 2156, date: '2025-06-14' },
+                    { name: 'sunset.jpg', type: 'image', size: 1876, date: '2025-06-10' },
+                    { name: 'city.mp4', type: 'video', size: 15678, date: '2025-06-05' },
+                    { name: 'waterfall.mov', type: 'video', size: 28945, date: '2025-06-01' },
+                    { name: 'mountain.jpg', type: 'image', size: 2456, date: '2025-05-28' },
+                    { name: 'lake.jpg', type: 'image', size: 1987, date: '2025-05-20' },
+                    { name: 'forest.mp4', type: 'video', size: 12568, date: '2025-05-15' }
+                ];
+                
+                // 存储媒体文件
+                allMediaFiles = mockMediaFiles;
+                filteredMediaFiles = [...allMediaFiles];
+                
+                // 更新媒体计数
+                updateMediaCount();
+                
+                // 显示媒体
+                displayMedia();
+                
+                // 隐藏加载指示器
+                loadingIndicator.classList.add('hidden');
+                
+                // 淡入显示相册
+                setTimeout(() => {
+                    gallery.classList.remove('opacity-0');
+                }, 300);
+            }, 1000);
+        }
+        
+        // 过滤媒体文件
+        function filterMedia() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const activeCategory = document.querySelector('.category-btn.bg-primary').dataset.category;
+            
+            filteredMediaFiles = allMediaFiles.filter(media => {
+                const matchesSearch = media.name.toLowerCase().includes(searchTerm);
+                const matchesCategory = activeCategory === 'all' || media.type === activeCategory;
+                return matchesSearch && matchesCategory;
+            });
+            
+            updateMediaCount();
+            displayMedia();
+        }
+        
+        // 更新媒体计数
+        function updateMediaCount() {
+            const totalCount = allMediaFiles.length;
+            const filteredCount = filteredMediaFiles.length;
+            
+            if (totalCount === 0) {
+                mediaCount.textContent = '没有找到媒体文件';
+            } else if (filteredCount === totalCount) {
+                mediaCount.textContent = `共 ${totalCount} 个媒体文件`;
+            } else {
+                mediaCount.textContent = `显示 ${filteredCount} 个结果，共 ${totalCount} 个媒体文件`;
+            }
+        }
+        
+        // 显示媒体文件
+        function displayMedia() {
+            gallery.innerHTML = '';
+            
+            if (filteredMediaFiles.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            
+            filteredMediaFiles.forEach((media, index) => {
+                const isImage = media.type === 'image';
+                const mediaUrl = `pic/${media.name}`;
+                const thumbnailUrl = isImage ? mediaUrl : `https://picsum.photos/seed/${media.name}/400/300`;
+                
+                const card = document.createElement('div');
+                card.className = 'media-card';
+                card.dataset.index = index;
+                
+                card.innerHTML = `
+                    <div class="relative aspect-video overflow-hidden group">
+                        <img src="${thumbnailUrl}" alt="${media.name}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                        ${isImage ? 
+                            '<div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">' +
+                            '<i class="fa fa-search-plus text-white text-4xl"></i></div>' : 
+                            '<div class="absolute inset-0 bg-black/20 flex items-center justify-center">' +
+                            '<i class="fa fa-play-circle text-white text-5xl opacity-80"></i></div>'
+                        }
+                        <div class="absolute top-2 right-2 bg-white/80 backdrop-blur rounded-full px-2 py-1 text-xs font-medium">
+                            ${isImage ? '<i class="fa fa-image mr-1"></i> 图片' : '<i class="fa fa-film mr-1"></i> 视频'}
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-medium truncate">${media.name}</h3>
+                        <div class="flex justify-between items-center mt-2 text-sm text-gray-500">
+                            <span>${formatFileSize(media.size)}</span>
+                            <span>${media.date}</span>
+                        </div>
+                    </div>
+                `;
+                
+                card.addEventListener('click', () => openFullscreen(index));
+                gallery.appendChild(card);
+            });
+        }
+        
+        // 打开全屏查看器
+        function openFullscreen(index) {
+            currentMediaIndex = index;
+            const media = filteredMediaFiles[index];
+            const isImage = media.type === 'image';
+            
+            // 重置查看器状态
+            fullscreenImage.style.opacity = '0';
+            fullscreenVideo.style.opacity = '0';
+            fullscreenImage.src = '';
+            fullscreenVideo.src = '';
+            viewerLoader.classList.remove('hidden');
+            
+            // 设置媒体内容
+            if (isImage) {
+                fullscreenImage.src = `pic/${media.name}`;
+                fullscreenImage.alt = media.name;
+                fullscreenImage.onload = () => {
+                    fullscreenImage.style.opacity = '1';
+                    viewerLoader.classList.add('hidden');
+                };
+                fullscreenVideo.style.display = 'none';
+                fullscreenImage.style.display = 'block';
+            } else {
+                fullscreenVideo.src = `pic/${media.name}`;
+                fullscreenVideo.onloadeddata = () => {
+                    fullscreenVideo.style.opacity = '1';
+                    viewerLoader.classList.add('hidden');
+                };
+                fullscreenImage.style.display = 'none';
+                fullscreenVideo.style.display = 'block';
+            }
+            
+            // 设置媒体信息
+            mediaTitle.textContent = media.name;
+            mediaDetails.textContent = `${media.type === 'image' ? '图片' : '视频'} • ${formatFileSize(media.size)} • ${media.date}`;
+            
+            // 显示查看器
+            fullscreenViewer.classList.remove('opacity-0', 'pointer-events-none');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 关闭全屏查看器
+        function closeFullscreen() {
+            fullscreenViewer.classList.add('opacity-0', 'pointer-events-none');
+            document.body.style.overflow = ''; // 恢复背景滚动
+            
+            // 暂停视频播放
+            if (!fullscreenVideo.paused) {
+                fullscreenVideo.pause();
+            }
+        }
+        
+        // 显示上一个媒体
+        function showPreviousMedia() {
+            currentMediaIndex = (currentMediaIndex - 1 + filteredMediaFiles.length) % filteredMediaFiles.length;
+            openFullscreen(currentMediaIndex);
+        }
+        
+        // 显示下一个媒体
+        function showNextMedia() {
+            currentMediaIndex = (currentMediaIndex + 1) % filteredMediaFiles.length;
+            openFullscreen(currentMediaIndex);
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            else return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+    </script>
+</body>
+</html>
+    
